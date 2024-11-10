@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{% if branch %}Edit Branch{% else %}New Branch{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        {% if branch %}
+                            Edit Branch: {{ branch.name }}
+                        {% else %}
+                            Create New Branch
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Branch Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="name"
+                                   name="name"
+                                   value="{{ branch.name if branch else '' }}"
+                                   required
+                                   pattern="[A-Za-z0-9_\-./]+"
+                                   title="Branch name can only contain letters, numbers, underscores, hyphens, dots, and forward slashes">
+                            <div class="invalid-feedback">
+                                Please provide a valid branch name.
+                            </div>
+                            <small class="form-text text-muted">
+                                Branch name can only contain letters, numbers, underscores, hyphens, dots, and forward slashes.
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control"
+                                      id="description"
+                                      name="description"
+                                      rows="3">{{ branch.description if branch else '' }}</textarea>
+                            <small class="form-text text-muted">
+                                Briefly describe the purpose of this branch (optional).
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       id="active"
+                                       name="active"
+                                       {% if branch is none or branch.active %}checked{% endif %}>
+                                <label class="form-check-label" for="active">Active</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Inactive branches won't appear in commit forms.
+                            </small>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('main.list_branches') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if branch %}Update{% else %}Create{% endif %} Branch
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+// Form validation
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
+{% endblock %}
+
+{% endblock %}

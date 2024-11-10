@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Commit{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="h2 mb-4">Edit Commit</h1>
+
+    <form method="POST" enctype="multipart/form-data" class="commit-form">
+        <div class="mb-4">
+            <label class="form-label">Commit Number</label>
+            <input type="text" class="form-control" name="commit_number" value="{{ commit.commit_number }}" required>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Branch</label>
+            <select class="form-select custom-select" name="branch_id" required>
+                {% for branch in branches %}
+                <option value="{{ branch.id }}" {% if branch.id == commit.branch_id %}selected{% endif %}>
+                    {{ branch.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Commit Message</label>
+            <input type="text" class="form-control" name="commit_message" value="{{ commit.commit_message }}" required>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Long Comment (Markdown supported)</label>
+            <textarea class="form-control code-textarea" name="long_comment" rows="6">{{ commit.long_comment }}</textarea>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Current Attachments</label>
+            <div class="current-attachments">
+                {% if commit.attachments %}
+                    {% for attachment in commit.attachments %}
+                    <div class="attachment-item">
+                        <div class="attachment-info">
+                            <i class="fas fa-paperclip"></i>
+                            <a href="{{ url_for('main.download_attachment', id=attachment.id) }}" class="attachment-link">
+                                {{ attachment.filename }}
+                            </a>
+                        </div>
+                        <form action="{{ url_for('main.delete_attachment', id=attachment.id) }}"
+                              method="POST"
+                              class="d-inline"
+                              onsubmit="return confirm('Are you sure you want to delete this attachment?');">
+                            <button type="submit" class="btn btn-delete btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-attachments">No attachments</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Add New Attachments</label>
+            <div class="custom-file-upload">
+                <input type="file" name="attachments" multiple class="custom-file-input" id="attachments">
+                <label class="custom-file-label" for="attachments">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Choose files
+                </label>
+            </div>
+            <div class="form-text">
+                Supported formats: txt, pdf, png, jpg, jpeg, gif, doc, docx, md, sql
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Update Commit</button>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .commit-form {
+        max-width: 800px;
+    }
+
+    .form-label {
+        color: #ffffff;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .custom-select {
+        background-color: #2A2A2A;
+        color: #ffffff;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 0.5rem;
+        width: 100%;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23ffffff' d='M0 2l4 4 4-4H0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 8px 8px;
+    }
+
+    .custom-select:focus {
+        border-color: #0D6EFD;
+        outline: none;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .code-textarea {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        background-color: #2A2A2A;
+        color: #ffffff;
+        border: 1px solid #404040;
+    }
+
+    .current-attachments {
+        background-color: #2A2A2A;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 0.5rem;
+    }
+
+    .attachment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        background-color: #363636;
+        border-radius: 4px;
+        border: 1px solid #404040;
+    }
+
+    .attachment-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .attachment-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .attachment-link {
+        color: #0D6EFD;
+        text-decoration: none;
+    }
+
+    .attachment-link:hover {
+        text-decoration: underline;
+    }
+
+    .no-attachments {
+        color: #888;
+        font-style: italic;
+        padding: 0.5rem;
+    }
+
+    .custom-file-upload {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .custom-file-input {
+        position: absolute;
+        left: -9999px;
+    }
+
+    .custom-file-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background-color: #2A2A2A;
+        color: #ffffff;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .custom-file-label:hover {
+        background-color: #363636;
+        border-color: #505050;
+    }
+
+    .form-text {
+        color: #888;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn-delete {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-delete:hover {
+        background-color: #c82333;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}New Commit{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0">New Commit</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="commit_number" class="form-label">Commit Number</label>
+                <input type="text" class="form-control" id="commit_number" name="commit_number" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="branch_id" class="form-label">Branch</label>
+                <select class="form-select" id="branch_id" name="branch_id" required>
+                    <option value="">Select a branch</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="commit_message" class="form-label">Commit Message</label>
+                <input type="text" class="form-control" id="commit_message" name="commit_message" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="long_comment" class="form-label">Long Comment (Markdown supported)</label>
+                <textarea class="form-control" id="long_comment" name="long_comment" rows="5"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="attachments" class="form-label">Attachments</label>
+                <input type="file" class="form-control" id="attachments" name="attachments" multiple>
+                <div class="form-text">
+                    Supported formats: txt, pdf, png, jpg, jpeg, gif, doc, docx, md, sql
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save Commit</button>
+                <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
