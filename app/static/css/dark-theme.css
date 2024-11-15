@@ -301,3 +301,45 @@ textarea.code-textarea {
 .table tr:hover .active {
     color: #28a745 !important;
 }
+
+/* Select2 Dark Theme Overrides */
+.select2-container--bootstrap-5 .select2-selection {
+    background-color: #2A2A2A !important;
+    border-color: #404040 !important;
+    color: #ffffff !important;
+    min-height: 35px !important;
+    height: 35px !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    color: #ffffff !important;
+    padding-top: 3px !important;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    background-color: #2A2A2A !important;
+    border-color: #404040 !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option {
+    color: #ffffff !important;
+    padding: 4px 12px !important;
+    min-height: 32px !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    filter: invert(1);
+    height: 35px !important;
+}
+
+/* Ajustes para los badges dentro del select */
+.select2-results__option .badge,
+.select2-selection__rendered .badge {
+    padding: 3px 8px !important;
+    font-size: 0.875rem !important;
+}

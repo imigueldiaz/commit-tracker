@@ -8,15 +8,30 @@
 
     <form method="POST" enctype="multipart/form-data" class="commit-form">
         <div class="mb-4">
-            <label class="form-label">Commit Number</label>
-            <input type="text" class="form-control" name="commit_number" value="{{ commit.commit_number }}" required>
+            <label class="form-label">Commit Number (VSTFS)</label>
+            <input type="number" class="form-control" name="commit_number" value="{{ commit.commit_number }}" required>
+        </div>
+        
+        <div class="mb-4">
+            <label class="form-label">JIRA Ticket (opcional)</label>
+            <input type="text" 
+                   class="form-control" 
+                   name="jira_ticket" 
+                   value="{{ commit.jira_ticket }}"
+                   pattern="[A-Z]+-[0-9]+"
+                   title="El formato debe ser como PROJ-123">
+            <div class="form-text">
+                Formato: PROJ-123 (dejar en blanco si no hay ticket asociado)
+            </div>
         </div>
 
         <div class="mb-4">
             <label class="form-label">Branch</label>
-            <select class="form-select custom-select" name="branch_id" required>
+            <select class="form-select branch-select" name="branch_id" required>
                 {% for branch in branches %}
-                <option value="{{ branch.id }}" {% if branch.id == commit.branch_id %}selected{% endif %}>
+                <option value="{{ branch.id }}" 
+                        {% if branch.id == commit.branch_id %}selected{% endif %}
+                        data-color="{{ branch.color }}">
                     {{ branch.name }}
                 </option>
                 {% endfor %}
@@ -34,53 +49,66 @@
         </div>
 
         <div class="mb-4">
-            <label class="form-label">Current Attachments</label>
-            <div class="current-attachments">
-                {% if commit.attachments %}
-                    {% for attachment in commit.attachments %}
-                    <div class="attachment-item">
-                        <div class="attachment-info">
-                            <i class="fas fa-paperclip"></i>
-                            <a href="{{ url_for('main.download_attachment', id=attachment.id) }}" class="attachment-link">
-                                {{ attachment.filename }}
-                            </a>
-                        </div>
-                        <form action="{{ url_for('main.delete_attachment', id=attachment.id) }}"
-                              method="POST"
-                              class="d-inline"
-                              onsubmit="return confirm('Are you sure you want to delete this attachment?');">
-                            <button type="submit" class="btn btn-delete btn-sm">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="no-attachments">No attachments</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="mb-4">
-            <label class="form-label">Add New Attachments</label>
-            <div class="custom-file-upload">
-                <input type="file" name="attachments" multiple class="custom-file-input" id="attachments">
-                <label class="custom-file-label" for="attachments">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    Choose files
-                </label>
+            <label class="form-label">Attachments</label>
+            <div class="drop-zone">
+                <span class="drop-zone__prompt">Drop files here or click to upload</span>
+                <input type="file" class="drop-zone__input" name="attachments" multiple>
             </div>
             <div class="form-text">
                 Supported formats: txt, pdf, png, jpg, jpeg, gif, doc, docx, md, sql
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Update Commit</button>
+        {% if commit.attachments %}
+        <div class="mb-4">
+            <label class="form-label">Current Attachments</label>
+            <ul class="list-group">
+                {% for attachment in commit.attachments %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ attachment.filename }}
+                    <div class="btn-group">
+                        <a href="{{ url_for('main.download_attachment', id=attachment.id) }}" class="btn btn-sm btn-primary">Download</a>
+                        <form action="{{ url_for('main.delete_attachment', id=attachment.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this attachment?')">Delete</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
             <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this commit?</p>
+                <p><strong>Commit Number:</strong> {{ commit.commit_number }}</p>
+                <p><strong>Message:</strong> {{ commit.commit_message }}</p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('main.delete_commit', id=commit.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_css %}
@@ -89,130 +117,177 @@
         max-width: 800px;
     }
 
-    .form-label {
-        color: #ffffff;
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-
-    .custom-select {
-        background-color: #2A2A2A;
-        color: #ffffff;
-        border: 1px solid #404040;
-        border-radius: 4px;
-        padding: 0.5rem;
-        width: 100%;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23ffffff' d='M0 2l4 4 4-4H0z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 1rem center;
-        background-size: 8px 8px;
-    }
-
-    .custom-select:focus {
-        border-color: #0D6EFD;
-        outline: none;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
-
-    .code-textarea {
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        background-color: #2A2A2A;
-        color: #ffffff;
-        border: 1px solid #404040;
-    }
-
-    .current-attachments {
-        background-color: #2A2A2A;
-        border: 1px solid #404040;
-        border-radius: 4px;
-        padding: 0.5rem;
-    }
-
-    .attachment-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-        background-color: #363636;
-        border-radius: 4px;
-        border: 1px solid #404040;
-    }
-
-    .attachment-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .attachment-info {
+    /* Drop zone styles */
+    .drop-zone {
+        max-width: 100%;
+        height: 150px;
+        padding: 25px;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-    }
-
-    .attachment-link {
-        color: #0D6EFD;
-        text-decoration: none;
-    }
-
-    .attachment-link:hover {
-        text-decoration: underline;
-    }
-
-    .no-attachments {
-        color: #888;
-        font-style: italic;
-        padding: 0.5rem;
-    }
-
-    .custom-file-upload {
-        position: relative;
-        display: inline-block;
-        width: 100%;
-    }
-
-    .custom-file-input {
-        position: absolute;
-        left: -9999px;
-    }
-
-    .custom-file-label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background-color: #2A2A2A;
-        color: #ffffff;
-        border: 1px solid #404040;
-        border-radius: 4px;
+        justify-content: center;
+        text-align: center;
         cursor: pointer;
-        transition: all 0.2s;
+        color: var(--dark-text);
+        border: 2px dashed var(--dark-border);
+        border-radius: 6px;
+        background-color: var(--dark-input);
+        transition: all 0.2s ease;
     }
 
-    .custom-file-label:hover {
-        background-color: #363636;
-        border-color: #505050;
+    .drop-zone:hover {
+        background-color: var(--dark-hover);
     }
 
-    .form-text {
-        color: #888;
-        font-size: 0.875rem;
-        margin-top: 0.5rem;
+    .drop-zone--over {
+        border-color: #0D6EFD;
+        background-color: var(--dark-hover);
     }
 
-    .form-actions {
-        display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
+    .drop-zone__input {
+        display: none;
     }
 
-    .btn-delete {
+    .drop-zone__prompt {
+        color: var(--dark-text-muted);
+    }
+
+    /* List group dark theme */
+    .list-group-item {
+        background-color: var(--dark-input);
+        border-color: var(--dark-border);
+        color: var(--dark-text);
+    }
+
+    .list-group-item:hover {
+        background-color: var(--dark-hover);
+    }
+
+    .list-group {
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .btn-group .btn-sm {
         padding: 0.25rem 0.5rem;
         font-size: 0.875rem;
     }
 
-    .btn-delete:hover {
-        background-color: #c82333;
+    .btn-group .btn:hover {
+        opacity: 0.9;
     }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.branch-select').select2({
+        theme: 'bootstrap-5',
+        templateResult: formatBranchOption,
+        templateSelection: formatBranchOption,
+        placeholder: 'Select a branch'
+    });
+
+    // Drag and drop functionality
+    document.querySelectorAll(".drop-zone__input").forEach(inputElement => {
+        const dropZoneElement = inputElement.closest(".drop-zone");
+
+        dropZoneElement.addEventListener("click", e => {
+            inputElement.click();
+        });
+
+        inputElement.addEventListener("change", e => {
+            if (inputElement.files.length) {
+                updateDropZone(dropZoneElement, inputElement.files);
+            }
+        });
+
+        dropZoneElement.addEventListener("dragover", e => {
+            e.preventDefault();
+            dropZoneElement.classList.add("drop-zone--over");
+        });
+
+        ["dragleave", "dragend"].forEach(type => {
+            dropZoneElement.addEventListener(type, e => {
+                dropZoneElement.classList.remove("drop-zone--over");
+            });
+        });
+
+        dropZoneElement.addEventListener("drop", e => {
+            e.preventDefault();
+
+            if (e.dataTransfer.files.length) {
+                inputElement.files = e.dataTransfer.files;
+                updateDropZone(dropZoneElement, e.dataTransfer.files);
+            }
+
+            dropZoneElement.classList.remove("drop-zone--over");
+        });
+
+        // Paste functionality
+        document.addEventListener('paste', async function(e) {
+            e.preventDefault();
+            let files = [];
+
+            // Handle pasted images
+            if (e.clipboardData.items) {
+                for (let i = 0; i < e.clipboardData.items.length; i++) {
+                    const item = e.clipboardData.items[i];
+                    
+                    if (item.type.indexOf("image") !== -1) {
+                        // Convert image to file
+                        const blob = item.getAsFile();
+                        const file = new File([blob], `pasted_image_${new Date().getTime()}.png`, { type: 'image/png' });
+                        files.push(file);
+                    } else if (item.type === "text/plain") {
+                        // Handle pasted text
+                        try {
+                            const text = await new Promise(resolve => item.getAsString(resolve));
+                            const blob = new Blob([text], { type: 'text/plain' });
+                            const file = new File([blob], `pasted_text_${new Date().getTime()}.txt`, { type: 'text/plain' });
+                            files.push(file);
+                        } catch (error) {
+                            console.error('Error processing pasted text:', error);
+                        }
+                    }
+                }
+            }
+
+            if (files.length > 0) {
+                // Create a new FileList-like object
+                const dataTransfer = new DataTransfer();
+                files.forEach(file => dataTransfer.items.add(file));
+
+                // Combine with existing files if any
+                const existingFiles = Array.from(inputElement.files || []);
+                existingFiles.forEach(file => dataTransfer.items.add(file));
+
+                // Update the input's files
+                inputElement.files = dataTransfer.files;
+                updateDropZone(dropZoneElement, inputElement.files);
+            }
+        });
+    });
+});
+
+function formatBranchOption(branch) {
+    if (!branch.id) {
+        return branch.text;
+    }
+    
+    var color = $(branch.element).data('color');
+    var $branch = $(
+        '<span class="badge" style="background-color: ' + color + '">' + branch.text + '</span>'
+    );
+    return $branch;
+}
+
+function updateDropZone(dropZoneElement, files) {
+    let prompt = dropZoneElement.querySelector(".drop-zone__prompt");
+    
+    if (prompt) {
+        prompt.textContent = `${files.length} file(s) selected`;
+    }
+}
+</script>
 {% endblock %}

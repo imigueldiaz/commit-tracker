@@ -2,14 +2,121 @@
 
 {% block title %}View Commit{% endblock %}
 
+{% block extra_css %}
+<style>
+    .attachment-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .attachment-list li {
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+
+    .btn-group .btn:hover {
+        opacity: 0.9;
+    }
+
+    /* Timeline styles */
+    .timeline {
+        position: relative;
+        padding: 1rem 0;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 1rem;
+        height: 100%;
+        width: 2px;
+        background-color: var(--dark-border);
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 3rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: calc(1rem - 4px);
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--dark-border);
+        border: 2px solid var(--dark-input);
+    }
+
+    .timeline-content {
+        background-color: var(--dark-input);
+        padding: 1rem;
+        border-radius: 4px;
+        border: 1px solid var(--dark-border);
+    }
+
+    .timeline-content:hover {
+        background-color: var(--dark-hover);
+    }
+
+    .branch-transition {
+        display: flex;
+        align-items: center;
+    }
+
+    /* Form styles */
+    .form-select {
+        background-color: var(--dark-input);
+        border-color: var(--dark-border);
+        color: var(--dark-text);
+    }
+
+    .form-select:focus {
+        background-color: var(--dark-input);
+        border-color: var(--primary);
+        color: var(--dark-text);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="card-title mb-0">{{ commit.commit_number }}</h5>
+        <h5 class="mb-0">Commit #{{ commit.commit_number }}</h5>
     </div>
     <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Branch: {{ commit.branch }}</h6>
-        <p class="card-text">{{ commit.commit_message }}</p>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Branch:</strong>
+                <span class="badge" style="background-color: {{ commit.branch.color }}">
+                    {{ commit.branch.name }}
+                </span>
+            </div>
+            <div class="col-md-6">
+                <strong>JIRA Ticket:</strong>
+                {% if commit.jira_ticket %}
+                <a href="https://jira.example.com/browse/{{ commit.jira_ticket }}" target="_blank">
+                    {{ commit.jira_ticket }}
+                </a>
+                {% else %}
+                <span class="text-muted">No ticket</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <strong>Message:</strong>
+            <p class="mb-0">{{ commit.commit_message }}</p>
+        </div>
 
         {% if commit.long_comment %}
         <div class="card mb-3">
@@ -22,22 +129,115 @@
         </div>
         {% endif %}
 
+        <!-- Branch Transition History -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Branch History</h5>
+                <span class="badge bg-secondary">{{ transitions|length }} transitions</span>
+            </div>
+            <div class="card-body">
+                {% if transitions %}
+                <div class="timeline">
+                    {% for transition in transitions %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="branch-transition">
+                                    <span class="badge" style="background-color: {{ transition.source.color }}">
+                                        {{ transition.source.name }}
+                                    </span>
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                    <span class="badge" style="background-color: {{ transition.target.color }}">
+                                        {{ transition.target.name }}
+                                    </span>
+                                </div>
+                                <small class="text-muted">
+                                    {{ transition.transitioned_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    No branch transitions yet
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Branch Transition Form -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Move to Another Branch</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main.transition_commit', commit_id=commit.id) }}" method="POST" class="row align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">Current Branch</label>
+                        <div>
+                            <span class="badge" style="background-color: {{ commit.branch.color }}">
+                                {{ commit.branch.name }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="to_branch_id" class="form-label">Move to Branch</label>
+                        <select class="form-select" id="to_branch_id" name="to_branch_id" required>
+                            <option value="">Select target branch...</option>
+                            {% for branch in branches %}
+                                {% if branch.active %}
+                                <option value="{{ branch.id }}" 
+                                        data-color="{{ branch.color }}"
+                                        {% if not commit.branch.is_independent and (commit.branch.has_dependency(branch) or commit.branch.id == branch.id) %}
+                                        data-valid="true"
+                                        {% else %}
+                                        data-valid="false"
+                                        {% endif %}>
+                                    {{ branch.name }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-warning" id="transitionWarning" style="display: none;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            This transition doesn't follow the defined branch flow
+                        </div>
+                    </div>
+                    <div class="col-12 mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-exchange-alt"></i> Move Commit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {% if commit.attachments %}
         <div class="card mb-3">
             <div class="card-header">
                 Attachments
             </div>
             <div class="card-body">
-                <ul class="list-group">
+                <ul class="attachment-list">
                 {% for attachment in commit.attachments %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ attachment.filename }}
-                        <div>
-                            <a href="{{ url_for('main.download_attachment', id=attachment.id) }}"
-                               class="btn btn-sm btn-primary">Download</a>
-                            <a href="{{ url_for('main.delete_attachment', id=attachment.id) }}"
-                               class="btn btn-sm btn-danger"
-                               onclick="return confirm('Are you sure you want to delete this attachment?')">Delete</a>
+                    <li>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('main.download_attachment', commit_id=commit.id, attachment_id=attachment.id) }}" class="text-decoration-none">
+                                <i class="fas fa-paperclip me-2"></i>
+                                {{ attachment.filename }}
+                            </a>
+                            <form action="{{ url_for('main.delete_attachment', commit_id=commit.id, attachment_id=attachment.id) }}" 
+                                  method="POST" 
+                                  class="d-inline"
+                                  onsubmit="return confirm('Are you sure you want to delete this attachment?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
                         </div>
                     </li>
                 {% endfor %}
@@ -45,15 +245,38 @@
             </div>
         </div>
         {% endif %}
-
-        <p class="text-muted">Created on {{ commit.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
     </div>
     <div class="card-footer">
-        <a href="{{ url_for('main.edit_commit', id=commit.id) }}" class="btn btn-warning">Edit</a>
-        <a href="{{ url_for('main.delete_commit', id=commit.id) }}"
-           class="btn btn-danger"
-           onclick="return confirm('Are you sure you want to delete this commit?')">Delete</a>
-        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Back to List</a>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{{ url_for('main.edit_commit', id=commit.id) }}" class="btn btn-primary">Edit</a>
+                <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Back</a>
+            </div>
+            <small class="text-muted">Created: {{ commit.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Branch transition validation
+    $('#to_branch_id').on('change', function() {
+        const selectedOption = $(this).find('option:selected');
+        const isValidTransition = selectedOption.data('valid');
+        const warningElement = $('#transitionWarning');
+        
+        if (selectedOption.val() && !isValidTransition) {
+            warningElement.show();
+        } else {
+            warningElement.hide();
+        }
+    });
+
+    // Initialize tooltips if you have any
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+});
+</script>
 {% endblock %}

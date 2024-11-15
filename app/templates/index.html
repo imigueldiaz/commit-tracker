@@ -26,7 +26,8 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th class="commit-number-col">Commit Number</th>
+                    <th class="commit-number-col">VSTFS</th>
+                    <th class="jira-col">JIRA</th>
                     <th class="branch-col">Branch</th>
                     <th class="message-col">Message</th>
                     <th class="date-col">Date</th>
@@ -37,7 +38,23 @@
                 {% for commit in commits %}
                 <tr>
                     <td>{{ commit.commit_number }}</td>
-                    <td>{{ commit.branch.name }}</td>
+                    <td>
+                        {% if commit.jira_ticket %}
+                        <a href="https://educaria.atlassian.net/browse/{{ commit.jira_ticket }}" target="_blank" class="jira-link">{{ commit.jira_ticket }}</a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge branch-badge" 
+                              style="background-color: {{ commit.branch.color }}"
+                              data-bs-toggle="tooltip" 
+                              data-bs-placement="top" 
+                              data-bs-custom-class="custom-tooltip"
+                              title="{{ commit.branch.description or 'No description available' }}">
+                            {{ commit.branch.name }}
+                        </span>
+                    </td>
                     <td>{{ commit.commit_message }}</td>
                     <td>{{ commit.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
@@ -52,17 +69,17 @@
                         <!-- Delete Modal -->
                         <div class="modal fade" id="deleteModal{{ commit.id }}" tabindex="-1">
                             <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
+                                <div class="modal-content bg-dark text-light">
+                                    <div class="modal-header border-secondary">
                                         <h5 class="modal-title">Confirm Delete</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
                                         <p>Are you sure you want to delete this commit?</p>
                                         <p><strong>Commit Number:</strong> {{ commit.commit_number }}</p>
                                         <p><strong>Message:</strong> {{ commit.commit_message }}</p>
                                     </div>
-                                    <div class="modal-footer">
+                                    <div class="modal-footer border-secondary">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                         <form action="{{ url_for('main.delete_commit', id=commit.id) }}" method="POST" class="d-inline">
                                             <button type="submit" class="btn btn-danger">Delete</button>
@@ -75,11 +92,82 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" class="text-center">No commits found</td>
+                    <td colspan="6" class="text-center">No commits found</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Column widths */
+    .commit-number-col {
+        width: 15%;
+    }
+
+    .jira-col {
+        width: 15%;
+        min-width: 120px;
+    }
+
+    .branch-col {
+        width: 10%;
+        min-width: 100px;
+    }
+
+    .message-col {
+        width: 40%;
+    }
+
+    .date-col {
+        width: 12%;
+        min-width: 110px;
+    }
+
+    .actions-col {
+        width: 8%;
+        min-width: 100px;
+        text-align: right;
+    }
+
+    /* JIRA link styling */
+    .jira-link {
+        color: #0D6EFD;
+        text-decoration: none;
+    }
+
+    .jira-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Tooltip customization */
+    .custom-tooltip {
+        --bs-tooltip-bg: var(--dark-input);
+        --bs-tooltip-color: var(--dark-text);
+        --bs-tooltip-padding-x: 1rem;
+        --bs-tooltip-padding-y: 0.5rem;
+        font-size: 0.875rem;
+        max-width: 300px;
+        border: 1px solid var(--dark-border);
+    }
+
+    .branch-badge {
+        cursor: help;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover'
+    }));
+});
+</script>
 {% endblock %}

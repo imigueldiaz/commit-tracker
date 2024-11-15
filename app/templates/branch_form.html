@@ -53,33 +53,88 @@
                                       id="description"
                                       name="description"
                                       rows="3">{{ branch.description if branch else '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="color" class="form-label">Color</label>
+                            <div class="input-group">
+                                <input type="color"
+                                       class="form-control form-control-color"
+                                       id="color"
+                                       name="color"
+                                       value="{{ branch.color if branch else '#6c757d' }}"
+                                       title="Choose branch color">
+                                <input type="text"
+                                       class="form-control"
+                                       id="colorHex"
+                                       value="{{ branch.color if branch else '#6c757d' }}"
+                                       readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="order" class="form-label">Flow Order</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="order"
+                                   name="order"
+                                   value="{{ branch.order if branch else 0 }}"
+                                   min="0"
+                                   title="Order in the branch flow (0 = start)">
                             <small class="form-text text-muted">
-                                Briefly describe the purpose of this branch (optional).
+                                Determines the position in the branch flow (e.g., 0 for development, 1 for integration, etc.)
                             </small>
                         </div>
 
                         <div class="mb-3">
-                            <div class="form-check">
+                            <div class="form-check form-switch">
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       id="is_independent"
+                                       name="is_independent"
+                                       {% if branch and branch.is_independent %}checked{% endif %}>
+                                <label class="form-check-label" for="is_independent">Independent Branch</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Check if this branch is independent of the main flow (e.g., hotfix branches)
+                            </small>
+                        </div>
+
+                        <div class="mb-3" id="dependenciesSection">
+                            <label for="depends_on" class="form-label">Depends On</label>
+                            <select class="form-select"
+                                    id="depends_on"
+                                    name="depends_on"
+                                    {% if branch and branch.is_independent %}disabled{% endif %}>
+                                <option value="">No dependency</option>
+                                {% for other_branch in branches %}
+                                    {% if not branch or other_branch.id != branch.id %}
+                                    <option value="{{ other_branch.id }}"
+                                            {% if branch and other_branch in branch.depends_on %}selected{% endif %}>
+                                        {{ other_branch.name }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">
+                                Select the branch that this branch depends on in the flow
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
                                 <input type="checkbox"
                                        class="form-check-input"
                                        id="active"
                                        name="active"
-                                       {% if branch is none or branch.active %}checked{% endif %}>
+                                       {% if not branch or branch.active %}checked{% endif %}>
                                 <label class="form-check-label" for="active">Active</label>
                             </div>
-                            <small class="form-text text-muted">
-                                Inactive branches won't appear in commit forms.
-                            </small>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('main.list_branches') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Back
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i>
-                                {% if branch %}Update{% else %}Create{% endif %} Branch
-                            </button>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save Branch</button>
+                            <a href="{{ url_for('main.list_branches') }}" class="btn btn-secondary">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -87,24 +142,55 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block scripts %}
 <script>
-// Form validation
-(function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
-    Array.prototype.slice.call(forms).forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (!form.checkValidity()) {
-                event.preventDefault()
-                event.stopPropagation()
-            }
-            form.classList.add('was-validated')
-        }, false)
-    })
-})()
-</script>
-{% endblock %}
+$(document).ready(function() {
+    // Form validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
 
+    // Color input sync
+    $('#color').on('input', function() {
+        $('#colorHex').val($(this).val());
+    });
+
+    // Independent branch toggle
+    $('#is_independent').on('change', function() {
+        const dependsOnSelect = $('#depends_on');
+        if (this.checked) {
+            dependsOnSelect.prop('disabled', true);
+            dependsOnSelect.val('');
+        } else {
+            dependsOnSelect.prop('disabled', false);
+        }
+    });
+});
+
+function getContrastColor(hexcolor) {
+    // Convert hex to RGB
+    var r = parseInt(hexcolor.substr(1,2),16);
+    var g = parseInt(hexcolor.substr(3,2),16);
+    var b = parseInt(hexcolor.substr(5,2),16);
+    
+    // Calculate luminance
+    var yiq = ((r*299)+(g*587)+(b*114))/1000;
+    
+    // Return black or white depending on luminance
+    return (yiq >= 128) ? '#000000' : '#ffffff';
+}
+</script>
 {% endblock %}
