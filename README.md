@@ -1,138 +1,114 @@
 # Commit Tracker
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: Development](https://img.shields.io/badge/Status-Development-blue)
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)
-
-A Flask web application for documenting and organizing Git commits with branch management, file attachments, and Markdown support.
+A powerful web application for tracking and managing software development commits across different branches with advanced dependency and transition features.
 
 ## 🚀 Features
 
-- 📝 Rich commit documentation with Markdown support
-- 🌳 Branch organization and management
-- 📎 File attachment support (documents, images, SQL scripts)
-- 🌙 Dark mode interface
-- 🔄 SQLite with migrations support
-- 📱 Responsive Bootstrap design
+### Branch Management
+- **Branch Flow Visualization**: Interactive diagram showing branch relationships and dependencies
+- **Commit Counter**: Visual indicators showing number of commits per branch
+- **Tooltips**: Hover over branches to see detailed commit information
+- **Branch Dependencies**: Define and validate branch relationships
+- **Independent Branches**: Support for branches outside the main flow
+- **Branch Ordering**: Customizable branch order for deployment flows
 
-## 🛠️ Tech Stack
+### Commit Management
+- **VSTFS Integration**: Track Visual Studio Team Foundation Server commits
+- **JIRA Integration**: Link commits to JIRA tickets
+- **Markdown Support**: Rich text formatting for commit descriptions
+- **File Attachments**: Support for multiple file attachments per commit
+- **Smart File Handling**: 
+  - Automatic file attachment for images
+  - Intelligent paste handling based on context
+  - Support for drag & drop
 
-- **Backend:** Python, Flask
-- **Database:** SQLite, SQLAlchemy, Flask-Migrate
-- **Frontend:** Bootstrap, Custom Dark Theme
-- **Features:** Markdown Support, File Management
-- **Development:** Git, Flask-SQLAlchemy
+### Commit Transitions
+- **Branch Transitions**: Move commits between branches
+- **Transition History**: Track all commit movements
+- **Dependency Validation**: Prevent invalid transitions
+- **Recent Activity**: View recent commit transitions
 
-## 📋 Requirements
+### UI/UX
+- **Dark Theme**: Modern dark theme design
+- **Responsive Layout**: Works on desktop and mobile
+- **Interactive Diagrams**: Using Mermaid.js for flow visualization
+- **Bootstrap 5**: Modern and responsive design
+- **FontAwesome Icons**: Clear visual indicators
 
-- Python 3.11+
-- Git
-- Web browser with JavaScript enabled
+## 🛠 Technical Stack
+- **Backend**: Python/Flask
+- **Database**: SQLAlchemy ORM
+- **Frontend**: 
+  - Bootstrap 5
+  - JavaScript
+  - Mermaid.js
+- **Features**:
+  - Markdown rendering
+  - File upload/download
+  - Dynamic tooltips
+  - Interactive diagrams
 
-## 🚀 Installation
+## 🔧 Installation
 
-1. Clone the repository
-```powershell
-git clone https://github.com/imigueldiaz/commit-tracker.git
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/commit-tracker.git
 cd commit-tracker
 ```
-
-2. Create and activate a virtual environment
-```powershell
-# Windows/PowerShell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-
-# Linux/Mac
-python -m venv .venv
-source .venv/bin/activate
+2. Create and activate virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 ```
 
-3. Install dependencies
-```powershell
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
-
-4. Set up environment variables
-```powershell
-# Copy the example environment file
-cp .env-example .env
-
-# Edit .env with your settings
-# Make sure to change the SECRET_KEY!
-```
-
-5. Initialize the database
-```powershell
+4. Initialize the database:
+```bash
+flask db init
+flask db migrate
 flask db upgrade
 ```
-
-6. Run the application
-```powershell
+5. Run the application:
+```bash
 flask run
 ```
+## 💡 Usage
 
-The application will be available at http://localhost:5000
+### Branch Setup
+1. Create branches with appropriate order and dependencies
+2. Define independent branches for hotfixes or parallel development
+3. Customize branch colors for visual distinction
 
-## 🗂️ Project Structure
+### Commit Management
+1. Create commits with VSTFS numbers and optional JIRA tickets
+2. Add detailed descriptions using Markdown
+3. Attach relevant files (images, documents, etc.)
+4. Move commits between branches following defined flows
 
-```
-commit-tracker/
-├── app/
-│   ├── __init__.py          # Flask app initialization
-│   ├── models.py            # Database models
-│   ├── routes.py            # Application routes
-│   ├── static/
-│   │   └── css/            # CSS files including dark theme
-│   └── templates/          # Jinja2 templates
-├── migrations/             # Database migrations
-├── config.py              # Configuration settings
-├── requirements.txt       # Project dependencies
-└── run.py                # Application entry point
-```
+### Viewing and Reporting
+1. View branch flow diagram
+2. Track commit transitions
+3. Monitor branch dependencies
+4. View commit details and attachments
 
-## 🔧 Usage
-
-1. Start by creating branches for your different development streams
-2. Add commits with detailed information:
-   - Commit number/hash
-   - Branch selection
-   - Commit message
-   - Extended description (with Markdown support)
-   - File attachments
-3. Use the dark/light theme toggle for your preferred visualization
-4. Manage branches and track your development progress
+## 🔒 Security Features
+- Attachment ownership validation
+- Branch transition validation
+- Input sanitization
+- Error handling and logging
 
 ## 🤝 Contributing
+Contributions are welcome! Please feel free to submit pull requests.
 
-Contributions are welcome! Here's how you can help:
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📝 License
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
+- Flask team for the excellent web framework
+- Mermaid.js for flow visualization
+- Bootstrap team for the UI framework
 
-This project is built using the following open-source packages:
-
-- Flask-SQLAlchemy - BSD 3-Clause License
-- SQLAlchemy - MIT License
-- Python-Markdown - BSD 3-Clause License
-- python-dotenv - BSD 3-Clause License
-- Flask - BSD 3-Clause License
-
-Thank you to all the maintainers and contributors of these packages!
-
-## 📫 Contact
-
-Ignacio de Miguel Díaz - [@imigueldiaz](https://github.com/imigueldiaz)
-
-Project Link: [https://github.com/imigueldiaz/commit-tracker](https://github.com/imigueldiaz/commit-tracker)
