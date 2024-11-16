@@ -15,6 +15,9 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)  # Initialize Flask-Migrate
 
+    with app.app_context():
+        db.create_all()  # Esto creará todas las tablas si no existen
+
     # Register blueprints
     from app.routes import bp
     app.register_blueprint(bp)

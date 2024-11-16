@@ -22,11 +22,66 @@
         {% endif %}
     {% endwith %}
 
+    <!-- Formulario de búsqueda y filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.index') }}" class="row g-3">
+                <!-- Búsqueda general -->
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ search }}" placeholder="Commit number, JIRA ticket or message">
+                </div>
+                
+                <!-- Filtro por branch -->
+                <div class="col-md-3">
+                    <label for="branch_id" class="form-label">Branch</label>
+                    <select class="form-select branch-select" id="branch_id" name="branch_id">
+                        <option value="">All branches</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" 
+                                {% if branch_id == branch.id %}selected{% endif %}
+                                data-color="{{ branch.color }}">
+                            {{ branch.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filtro por fecha -->
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from"
+                           value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">Date To</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to"
+                           value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+                </div>
+
+                <!-- Botones -->
+                <div class="col-md-1 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de commits -->
     <div class="table-responsive">
-        <table class="table">
+        <table class="table table-hover">
             <thead>
                 <tr>
-                    <th class="commit-number-col">VSTFS</th>
+                    <th class="commit-number-col">Commit #</th>
                     <th class="jira-col">JIRA</th>
                     <th class="branch-col">Branch</th>
                     <th class="message-col">Message</th>
@@ -89,10 +144,6 @@
                             </div>
                         </div>
                     </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="text-center">No commits found</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -157,12 +208,81 @@
     .branch-badge {
         cursor: help;
     }
+
+    /* Filtros */
+    .card {
+        background-color: var(--dark-card);
+        border: 1px solid var(--dark-border);
+    }
+
+    .form-control, .form-select {
+        background-color: var(--dark-input);
+        border-color: var(--dark-border);
+        color: var(--dark-text);
+    }
+
+    .form-control:focus, .form-select:focus {
+        background-color: var(--dark-input);
+        border-color: var(--primary);
+        color: var(--dark-text);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .form-control::placeholder {
+        color: var(--dark-text-muted);
+    }
+
+    /* Select2 customization */
+    .select2-container--bootstrap-5 .select2-selection {
+        background-color: var(--dark-input) !important;
+        border-color: var(--dark-border) !important;
+        color: var(--dark-text) !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+        color: var(--dark-text) !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-dropdown {
+        background-color: var(--dark-card) !important;
+        border-color: var(--dark-border) !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option {
+        color: var(--dark-text) !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background-color: var(--primary) !important;
+        color: white !important;
+    }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
 $(document).ready(function() {
+    // Inicializar Select2 para el filtro de branches
+    $('.branch-select').select2({
+        theme: 'bootstrap-5',
+        templateResult: formatBranchOption,
+        templateSelection: formatBranchOption,
+        placeholder: 'Select a branch'
+    });
+
+    // Función para formatear las opciones del select de branches
+    function formatBranchOption(branch) {
+        if (!branch.id) {
+            return branch.text;
+        }
+        var color = $(branch.element).data('color');
+        var $branch = $(
+            '<span class="badge" style="background-color: ' + color + '">' +
+            branch.text + '</span>'
+        );
+        return $branch;
+    }
+
     // Initialize tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {

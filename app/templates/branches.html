@@ -38,6 +38,7 @@
                             <th>Status</th>
                             <th>Order</th>
                             <th>Dependencies</th>
+                            <th>Allowed Transitions</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
@@ -65,6 +66,18 @@
                                 {% if branch.depends_on.count() > 0 %}
                                     {% for dep in branch.depends_on %}
                                     <span class="badge" style="background-color: {{ dep.color }}">{{ dep.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set transitions = branch.get_allowed_transitions() %}
+                                {% if transitions %}
+                                    {% for target in transitions %}
+                                    <span class="badge" style="background-color: {{ target.color }}">
+                                        <i class="fas fa-arrow-right"></i> {{ target.name }}
+                                    </span>
                                     {% endfor %}
                                 {% else %}
                                     <span class="text-muted">-</span>
@@ -120,7 +133,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" class="text-center">No branches found</td>
+                            <td colspan="8" class="text-center">No branches found</td>
                         </tr>
                         {% endfor %}
                     </tbody>

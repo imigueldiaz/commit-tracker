@@ -17,6 +17,22 @@
         border-radius: 8px;
     }
 
+    /* Estilos para las etiquetas de las flechas */
+    .edgeLabel {
+        background-color: rgba(33, 37, 41, 0.8) !important;
+        border-radius: 4px;
+        padding: 2px 4px !important;
+        font-size: 0.8em !important;
+    }
+
+    .edgeLabel.dep {
+        color: #fff !important;
+    }
+
+    .edgeLabel.transition {
+        color: #adb5bd !important;
+    }
+
     .transitions-list {
         max-height: 300px;
         overflow-y: auto;
@@ -85,20 +101,31 @@
                 <div class="card-body">
                     <div class="mermaid">
                         graph TD
-                        {% for branch in flow_branches %}
+                        %% Definición de nodos
+                        {% for branch in flow_branches + independent_branches %}
                             {{ branch.name }}["{{ branch.name }}<br/><small class='branch-commits' data-branch-id='{{ branch.id }}'>⚡ {{ branch.get_commits_count() }}</small>"]
+                            style {{ branch.name }} fill:{{ branch.color }}{% if branch.is_independent %},stroke-dasharray: 5 5{% endif %}
+                        {% endfor %}
+
+                        %% Dependencias
+                        {% for branch in flow_branches %}
                             {% if branch.get_dependencies_count() > 0 %}
                                 {% for dep in branch.depends_on %}
-                                    {{ dep.name }} --> {{ branch.name }}
+                                    {{ dep.name }} --> |"dep"| {{ branch.name }}
                                 {% endfor %}
                             {% endif %}
-                            style {{ branch.name }} fill:{{ branch.color }}
                         {% endfor %}
-                        
-                        {% for branch in independent_branches %}
-                            {{ branch.name }}["{{ branch.name }}<br/><small class='branch-commits' data-branch-id='{{ branch.id }}'>⚡ {{ branch.get_commits_count() }}</small>"]
-                            style {{ branch.name }} fill:{{ branch.color }},stroke-dasharray: 5 5
+
+                        %% Transiciones permitidas
+                        {% for branch in flow_branches + independent_branches %}
+                            {% for target in branch.get_allowed_transitions() %}
+                                {{ branch.name }} -.-> |"can move to"| {{ target.name }}
+                            {% endfor %}
                         {% endfor %}
+
+                        %% Estilo de las flechas
+                        classDef default stroke:#666,color:#fff;
+                        linkStyle default stroke:#666,stroke-width:2px;
                     </div>
 
                     {# Datos de commits ocultos para tooltips #}

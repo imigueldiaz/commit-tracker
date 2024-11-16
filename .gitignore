@@ -26,11 +26,24 @@ instance/
 .webassets-cache
 
 # Database
-*.db
-*.sqlite3
+instance/*.db
+instance/*.sqlite3
+backup_data.json
 
-# Migrations (optional - you might want to track these in production)
-# migrations/
+# Pero incluir la base de datos vacía
+!db/
+!db/empty.db
+
+# Scripts obsoletos
+delete_db.py
+init_db.py
+recreate_db.py
+create_empty_db.py
+
+# Migrations temporales
+migrations/create_allowed_transitions.py
+migrations/create_allowed_transitions_sqlite.py
+migrations/run_migration.py
 
 # Uploads
 uploads/

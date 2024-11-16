@@ -20,19 +20,12 @@ def export_data():
             'description': b.description,
             'active': b.active,
             'color': b.color,
-            'created_at': b.created_at,
             'order': b.order,
-            'is_independent': b.is_independent
+            'is_independent': b.is_independent,
+            'created_at': b.created_at,
+            'dependencies': [d.id for d in b.depends_on.all()],
+            'allowed_transitions': [t.id for t in b.get_allowed_transitions()]  # Añadido
         } for b in branches]
-
-        # Exportar dependencias de branches
-        dependencies = []
-        for branch in branches:
-            for dep in branch.depends_on:
-                dependencies.append({
-                    'branch_id': branch.id,
-                    'depends_on_id': dep.id
-                })
 
         # Exportar commits
         commits = Commit.query.all()
@@ -51,12 +44,12 @@ def export_data():
         attachments_data = [{
             'id': a.id,
             'filename': a.filename,
-            'data': a.data.decode('latin1') if a.data else None,  # Convertir bytes a string
             'commit_id': a.commit_id,
-            'uploaded_at': a.uploaded_at
+            'uploaded_at': a.uploaded_at,
+            'data': a.data.decode('latin1') if a.data else None  # Codificar datos binarios
         } for a in attachments]
 
-        # Exportar transiciones
+        # Exportar transiciones de branches
         transitions = BranchTransition.query.all()
         transitions_data = [{
             'id': t.id,
@@ -66,16 +59,15 @@ def export_data():
             'transitioned_at': t.transitioned_at
         } for t in transitions]
 
-        # Crear el diccionario completo
+        # Crear el diccionario completo de datos
         data = {
             'branches': branches_data,
-            'dependencies': dependencies,
             'commits': commits_data,
             'attachments': attachments_data,
             'transitions': transitions_data
         }
 
-        # Guardar a archivo
+        # Guardar en archivo JSON
         with open('backup_data.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, default=serialize_datetime, indent=2, ensure_ascii=False)
 

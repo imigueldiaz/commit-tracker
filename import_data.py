@@ -1,151 +1,109 @@
 import json
 from datetime import datetime
 from app import create_app, db
-from app.models import Branch, Commit, BranchTransition
+from app.models import Branch, Commit, Attachment, BranchTransition
+from sqlalchemy import select
 
-# Datos de ejemplo
-sample_data = {
-    "branches": [
-        {
-            "name": "Development",
-            "description": "Main development branch",
-            "color": "#4CAF50",
-            "order": 0,
-            "active": True,
-            "is_independent": False
-        },
-        {
-            "name": "Integration",
-            "description": "Integration testing branch",
-            "color": "#2196F3",
-            "order": 1,
-            "active": True,
-            "is_independent": False,
-            "depends_on": ["Development"]
-        },
-        {
-            "name": "QA",
-            "description": "Quality assurance branch",
-            "color": "#FFC107",
-            "order": 2,
-            "active": True,
-            "is_independent": False,
-            "depends_on": ["Integration"]
-        },
-        {
-            "name": "Production",
-            "description": "Production branch",
-            "color": "#9C27B0",
-            "order": 3,
-            "active": True,
-            "is_independent": False,
-            "depends_on": ["QA"]
-        },
-        {
-            "name": "Hotfix",
-            "description": "Emergency fixes branch",
-            "color": "#F44336",
-            "order": 99,
-            "active": True,
-            "is_independent": True
-        }
-    ],
-    "commits": [
-        {
-            "commit_number": 12345,
-            "jira_ticket": "PROJ-123",
-            "branch": "Development",
-            "commit_message": "Add user authentication system",
-            "long_comment": "## Changes\n- Implemented JWT authentication\n- Added login/register endpoints\n- Created user model\n\n## Testing\nAll tests passing \n\n```python\nclass User(db.Model):\n    id = db.Column(db.Integer, primary_key=True)\n    username = db.Column(db.String(80), unique=True)\n```",
-            "transitions": [
-                {
-                    "from_branch": "Development",
-                    "to_branch": "Integration",
-                    "date": "2024-01-15T10:30:00"
-                }
-            ]
-        },
-        {
-            "commit_number": 12346,
-            "jira_ticket": "PROJ-124",
-            "branch": "Integration",
-            "commit_message": "Implement dashboard analytics",
-            "long_comment": "Added new dashboard with:\n- User statistics\n- Activity graphs\n- Performance metrics",
-            "transitions": []
-        },
-        {
-            "commit_number": 12347,
-            "jira_ticket": "HOTFIX-001",
-            "branch": "Hotfix",
-            "commit_message": "Fix critical security vulnerability",
-            "long_comment": "**Emergency Fix**\n- Updated dependencies\n- Patched XSS vulnerability\n- Added security headers",
-            "transitions": [
-                {
-                    "from_branch": "Hotfix",
-                    "to_branch": "Production",
-                    "date": "2024-01-16T15:45:00"
-                }
-            ]
-        }
-    ]
-}
+app = create_app()
+
+def parse_datetime(dt_str):
+    if dt_str:
+        return datetime.fromisoformat(dt_str)
+    return None
 
 def import_data():
-    app = create_app()
     with app.app_context():
-        # Limpiar base de datos
-        print("Limpiando base de datos...")
-        db.drop_all()
-        db.create_all()
+        try:
+            # Cargar datos del archivo JSON
+            with open('backup_data.json', 'r', encoding='utf-8') as f:
+                data = json.load(f)
 
-        # Crear branches
-        print("\nCreando branches...")
-        branches = {}
-        for branch_data in sample_data["branches"]:
-            branch = Branch(
-                name=branch_data["name"],
-                description=branch_data["description"],
-                color=branch_data["color"],
-                order=branch_data["order"],
-                active=branch_data["active"],
-                is_independent=branch_data["is_independent"]
-            )
-            db.session.add(branch)
-            branches[branch.name] = branch
-        
-        # Establecer dependencias
-        print("Estableciendo dependencias entre branches...")
-        for branch_data in sample_data["branches"]:
-            if not branch_data["is_independent"] and "depends_on" in branch_data:
-                for dep_name in branch_data["depends_on"]:
-                    branches[branch_data["name"]].add_dependency(branches[dep_name])
+            # Limpiar base de datos existente
+            BranchTransition.query.delete()
+            Attachment.query.delete()
+            Commit.query.delete()
+            Branch.query.delete()
+            db.session.commit()
 
-        # Crear commits
-        print("\nCreando commits...")
-        for commit_data in sample_data["commits"]:
-            commit = Commit(
-                commit_number=commit_data["commit_number"],
-                jira_ticket=commit_data["jira_ticket"],
-                branch=branches[commit_data["branch"]],
-                commit_message=commit_data["commit_message"],
-                long_comment=commit_data["long_comment"]
-            )
-            db.session.add(commit)
-            
-            # Crear transiciones
-            for transition in commit_data["transitions"]:
-                branch_transition = BranchTransition(
-                    commit=commit,
-                    source=branches[transition["from_branch"]],
-                    target=branches[transition["to_branch"]],
-                    transitioned_at=datetime.fromisoformat(transition["date"])
+            # Diccionario para mapear IDs viejos a nuevos
+            branch_id_map = {}
+            commit_id_map = {}
+
+            # Importar branches
+            for branch_data in data['branches']:
+                branch = Branch(
+                    name=branch_data['name'],
+                    description=branch_data['description'],
+                    active=branch_data['active'],
+                    color=branch_data['color'],
+                    order=branch_data['order'],
+                    is_independent=branch_data['is_independent'],
+                    created_at=parse_datetime(branch_data['created_at'])
                 )
-                db.session.add(branch_transition)
+                db.session.add(branch)
+                db.session.flush()  # Para obtener el nuevo ID
+                branch_id_map[branch_data['id']] = branch.id
 
-        # Guardar cambios
-        print("\nGuardando cambios...")
-        db.session.commit()
-        print("\n¡Importación completada con éxito!")
+            # Establecer dependencias y transiciones permitidas
+            for branch_data in data['branches']:
+                # Usar db.session.get en lugar de query.get
+                branch = db.session.get(Branch, branch_id_map[branch_data['id']])
+                
+                # Establecer dependencias
+                for old_dep_id in branch_data['dependencies']:
+                    if old_dep_id in branch_id_map:
+                        dep_branch = db.session.get(Branch, branch_id_map[old_dep_id])
+                        if dep_branch:
+                            branch.add_dependency(dep_branch)
+
+                # Establecer transiciones permitidas
+                for old_trans_id in branch_data['allowed_transitions']:
+                    if old_trans_id in branch_id_map:
+                        target_branch = db.session.get(Branch, branch_id_map[old_trans_id])
+                        if target_branch:
+                            branch.add_allowed_transition(target_branch)
+
+            # Importar commits
+            for commit_data in data['commits']:
+                commit = Commit(
+                    commit_number=commit_data['commit_number'],
+                    jira_ticket=commit_data['jira_ticket'],
+                    branch_id=branch_id_map[commit_data['branch_id']],
+                    commit_message=commit_data['commit_message'],
+                    long_comment=commit_data['long_comment'],
+                    created_at=parse_datetime(commit_data['created_at'])
+                )
+                db.session.add(commit)
+                db.session.flush()
+                commit_id_map[commit_data['id']] = commit.id
+
+            # Importar attachments
+            for attachment_data in data['attachments']:
+                attachment = Attachment(
+                    filename=attachment_data['filename'],
+                    data=attachment_data['data'].encode('latin1') if attachment_data['data'] else None,
+                    commit_id=commit_id_map[attachment_data['commit_id']],
+                    uploaded_at=parse_datetime(attachment_data['uploaded_at'])
+                )
+                db.session.add(attachment)
+
+            # Importar transiciones
+            for transition_data in data['transitions']:
+                transition = BranchTransition(
+                    from_branch_id=branch_id_map[transition_data['from_branch_id']],
+                    to_branch_id=branch_id_map[transition_data['to_branch_id']],
+                    commit_id=commit_id_map[transition_data['commit_id']],
+                    transitioned_at=parse_datetime(transition_data['transitioned_at'])
+                )
+                db.session.add(transition)
+
+            db.session.commit()
+            print("Data imported successfully!")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error importing data: {str(e)}")
+            raise
 
 if __name__ == "__main__":
     import_data()

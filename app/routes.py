@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app, jsonify, abort
 from app import db
 from app.models import Commit, Attachment, Branch, BranchTransition
 import markdown
@@ -16,8 +16,57 @@ def allowed_file(filename):
 
 @bp.route('/', methods=['GET'])
 def index():
-    commits = Commit.query.order_by(Commit.created_at.desc()).all()
-    return render_template('index.html', commits=commits)
+    # Obtener parámetros de filtrado
+    search = request.args.get('search', '').strip()
+    branch_id = request.args.get('branch_id', type=int)
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+
+    # Construir la consulta base
+    query = Commit.query
+
+    # Aplicar filtros
+    if search:
+        search = f"%{search}%"
+        query = query.filter(
+            db.or_(
+                Commit.commit_number.ilike(search),
+                Commit.commit_message.ilike(search)
+            )
+        )
+    
+    if branch_id:
+        query = query.filter(Commit.branch_id == branch_id)
+    
+    if date_from:
+        try:
+            date_from = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Commit.created_at >= date_from)
+        except ValueError:
+            flash('Invalid date format for Date From', 'warning')
+    
+    if date_to:
+        try:
+            date_to = datetime.strptime(date_to, '%Y-%m-%d')
+            # Ajustar al final del día
+            date_to = date_to.replace(hour=23, minute=59, second=59)
+            query = query.filter(Commit.created_at <= date_to)
+        except ValueError:
+            flash('Invalid date format for Date To', 'warning')
+
+    # Ordenar por fecha de creación descendente
+    commits = query.order_by(Commit.created_at.desc()).all()
+    
+    # Obtener todos los branches para el filtro
+    branches = Branch.query.order_by(Branch.name).all()
+    
+    return render_template('index.html', 
+                         commits=commits, 
+                         branches=branches,
+                         search=request.args.get('search', ''),
+                         branch_id=branch_id,
+                         date_from=date_from,
+                         date_to=date_to)
 
 
 @bp.route('/commit/new', methods=['GET', 'POST'])
@@ -83,14 +132,27 @@ def new_branch():
                 is_independent=bool(request.form.get('is_independent', False))
             )
 
-            # Manejar dependencias si no es independiente
+            # First add the branch to the session
+            db.session.add(branch)
+            db.session.flush()  # This will assign an ID to the branch
+
+            # Now handle dependencies if not independent
             if not branch.is_independent and request.form.get('depends_on'):
                 depends_on_id = int(request.form['depends_on'])
                 depends_on_branch = Branch.query.get(depends_on_id)
                 if depends_on_branch:
                     branch.add_dependency(depends_on_branch)
 
-            db.session.add(branch)
+            # Handle allowed transitions
+            try:
+                allowed_transitions = request.form.getlist('allowed_transitions[]')
+                for transition_id in allowed_transitions:
+                    target_branch = Branch.query.get(int(transition_id))
+                    if target_branch:
+                        branch.add_allowed_transition(target_branch)
+            except Exception as e:
+                current_app.logger.error(f"Error setting allowed transitions: {str(e)}")
+
             db.session.commit()
             flash('Branch added successfully!', 'success')
             return redirect(url_for('main.list_branches'))
@@ -123,6 +185,25 @@ def edit_branch(id):
                 depends_on_branch = Branch.query.get(depends_on_id)
                 if depends_on_branch:
                     branch.add_dependency(depends_on_branch)
+
+            try:
+                # Actualizar transiciones permitidas
+                current_transitions = set(t.id for t in branch.get_allowed_transitions())
+                new_transitions = set(int(id) for id in request.form.getlist('allowed_transitions[]'))
+
+                # Eliminar transiciones que ya no están seleccionadas
+                for transition_id in current_transitions - new_transitions:
+                    target_branch = Branch.query.get(transition_id)
+                    if target_branch:
+                        branch.remove_allowed_transition(target_branch)
+
+                # Añadir nuevas transiciones seleccionadas
+                for transition_id in new_transitions - current_transitions:
+                    target_branch = Branch.query.get(transition_id)
+                    if target_branch:
+                        branch.add_allowed_transition(target_branch)
+            except Exception as e:
+                current_app.logger.error(f"Error updating allowed transitions: {str(e)}")
 
             db.session.commit()
             flash('Branch updated successfully!', 'success')
@@ -233,13 +314,14 @@ def delete_commit(id):
     return redirect(url_for('main.index'))
 
 
-@bp.route('/attachment/<int:commit_id>/<int:attachment_id>', methods=['GET'])
+@bp.route('/commit/<int:commit_id>/attachment/<int:attachment_id>/download')
 def download_attachment(commit_id, attachment_id):
     attachment = Attachment.query.get_or_404(attachment_id)
+    
+    # Verificar que el attachment pertenece al commit correcto
     if attachment.commit_id != commit_id:
-        flash('Invalid attachment', 'danger')
-        return redirect(url_for('main.view_commit', id=commit_id))
-        
+        abort(404)
+    
     return send_file(
         io.BytesIO(attachment.data),
         download_name=attachment.filename,

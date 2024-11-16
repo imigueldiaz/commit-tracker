@@ -7,6 +7,13 @@ branch_dependencies = db.Table('branch_dependencies',
     db.Column('depends_on_id', db.Integer, db.ForeignKey('branch.id'), primary_key=True)
 )
 
+# Tabla de asociación para transiciones permitidas entre branches
+allowed_transitions = db.Table('allowed_transitions',
+    db.Column('from_branch_id', db.Integer, db.ForeignKey('branch.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('to_branch_id', db.Integer, db.ForeignKey('branch.id', ondelete='CASCADE'), primary_key=True),
+    extend_existing=True
+)
+
 class Branch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
@@ -29,6 +36,15 @@ class Branch(db.Model):
         lazy='dynamic'
     )
 
+    # Relación para transiciones permitidas
+    allowed_transitions_to = db.relationship(
+        'Branch', secondary='allowed_transitions',
+        primaryjoin='Branch.id == allowed_transitions.c.from_branch_id',
+        secondaryjoin='Branch.id == allowed_transitions.c.to_branch_id',
+        backref=db.backref('allowed_transitions_from', lazy='dynamic'),
+        lazy='dynamic'
+    )
+
     def has_dependency(self, branch):
         return self.depends_on.filter_by(id=branch.id).first() is not None
 
@@ -45,6 +61,33 @@ class Branch(db.Model):
 
     def get_commits_count(self):
         return len(self.commits)
+
+    def add_allowed_transition(self, target_branch):
+        """Añade una rama como destino permitido para transiciones"""
+        if not self.can_transition_to(target_branch):
+            self.allowed_transitions_to.append(target_branch)
+
+    def remove_allowed_transition(self, target_branch):
+        """Elimina una rama como destino permitido para transiciones"""
+        if self.can_transition_to(target_branch):
+            self.allowed_transitions_to.remove(target_branch)
+
+    def can_transition_to(self, target_branch):
+        """Verifica si se puede hacer una transición a la rama objetivo"""
+        try:
+            transitions = self.get_allowed_transitions()
+            return any(t.id == target_branch.id for t in transitions)
+        except Exception:
+            # Si la tabla no existe aún, permitimos todas las transiciones temporalmente
+            return True
+
+    def get_allowed_transitions(self):
+        """Obtiene todas las ramas a las que se puede transicionar desde esta rama"""
+        try:
+            return self.allowed_transitions_to.all()
+        except Exception:
+            # Si la tabla no existe aún, retornamos una lista vacía
+            return []
 
     def __repr__(self):
         return f'<Branch {self.name}>'

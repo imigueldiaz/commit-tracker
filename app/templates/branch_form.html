@@ -3,6 +3,14 @@
 {% block title %}{% if branch %}Edit Branch{% else %}New Branch{% endif %}{% endblock %}
 
 {% block content %}
+<style>
+    select:disabled {
+        background-color: #343a40 !important;
+        color: #adb5bd !important;
+        border-color: #495057 !important;
+    }
+</style>
+
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -65,7 +73,7 @@
                                        value="{{ branch.color if branch else '#6c757d' }}"
                                        title="Choose branch color">
                                 <input type="text"
-                                       class="form-control"
+                                       class="form-control bg-dark text-light"
                                        id="colorHex"
                                        value="{{ branch.color if branch else '#6c757d' }}"
                                        readonly>
@@ -87,38 +95,52 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="is_independent" class="form-label">Is Independent</label>
                             <div class="form-check form-switch">
-                                <input type="checkbox"
-                                       class="form-check-input"
-                                       id="is_independent"
-                                       name="is_independent"
+                                <input type="checkbox" class="form-check-input" id="is_independent" name="is_independent"
                                        {% if branch and branch.is_independent %}checked{% endif %}>
-                                <label class="form-check-label" for="is_independent">Independent Branch</label>
                             </div>
-                            <small class="form-text text-muted">
-                                Check if this branch is independent of the main flow (e.g., hotfix branches)
-                            </small>
                         </div>
 
-                        <div class="mb-3" id="dependenciesSection">
+                        <div class="mb-3" id="dependencies-section">
                             <label for="depends_on" class="form-label">Depends On</label>
-                            <select class="form-select"
-                                    id="depends_on"
-                                    name="depends_on"
-                                    {% if branch and branch.is_independent %}disabled{% endif %}>
-                                <option value="">No dependency</option>
+                            <select class="form-select branch-select" name="depends_on" id="depends_on">
+                                <option value="">Select a branch</option>
                                 {% for other_branch in branches %}
                                     {% if not branch or other_branch.id != branch.id %}
-                                    <option value="{{ other_branch.id }}"
-                                            {% if branch and other_branch in branch.depends_on %}selected{% endif %}>
-                                        {{ other_branch.name }}
-                                    </option>
+                                        <option value="{{ other_branch.id }}"
+                                                {% if branch and branch.depends_on.filter_by(id=other_branch.id).first() %}selected{% endif %}
+                                                data-color="{{ other_branch.color }}">
+                                            {{ other_branch.name }}
+                                        </option>
                                     {% endif %}
                                 {% endfor %}
                             </select>
-                            <small class="form-text text-muted">
-                                Select the branch that this branch depends on in the flow
-                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="allowed_transitions" class="form-label">Allowed Transitions To</label>
+                            <!-- Debug info -->
+                            {% if branch %}
+                            <div class="small text-muted mb-2">
+                                Current transitions: 
+                                {% for t in branch.get_allowed_transitions() %}
+                                    {{ t.name }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <select class="form-select branch-select" name="allowed_transitions[]" id="allowed_transitions" multiple>
+                                {% for other_branch in branches %}
+                                    {% if not branch or other_branch.id != branch.id %}
+                                        <option value="{{ other_branch.id }}"
+                                                {% if branch and branch.can_transition_to(other_branch) %}selected{% endif %}
+                                                data-color="{{ other_branch.color }}">
+                                            {{ other_branch.name }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select multiple branches where commits can be moved to from this branch.</div>
                         </div>
 
                         <div class="mb-3">
@@ -146,51 +168,31 @@
 
 {% block scripts %}
 <script>
-$(document).ready(function() {
-    // Form validation
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
-
-    // Color input sync
-    $('#color').on('input', function() {
-        $('#colorHex').val($(this).val());
-    });
-
-    // Independent branch toggle
-    $('#is_independent').on('change', function() {
-        const dependsOnSelect = $('#depends_on');
-        if (this.checked) {
-            dependsOnSelect.prop('disabled', true);
-            dependsOnSelect.val('');
-        } else {
-            dependsOnSelect.prop('disabled', false);
+    document.addEventListener('DOMContentLoaded', function() {
+        const isIndependentCheckbox = document.getElementById('is_independent');
+        const dependsOnSelect = document.getElementById('depends_on');
+        
+        // Función para actualizar el estado del select
+        function updateDependsOnSelect() {
+            dependsOnSelect.disabled = isIndependentCheckbox.checked;
+            if (isIndependentCheckbox.checked) {
+                dependsOnSelect.value = '';
+            }
         }
-    });
-});
 
-function getContrastColor(hexcolor) {
-    // Convert hex to RGB
-    var r = parseInt(hexcolor.substr(1,2),16);
-    var g = parseInt(hexcolor.substr(3,2),16);
-    var b = parseInt(hexcolor.substr(5,2),16);
-    
-    // Calculate luminance
-    var yiq = ((r*299)+(g*587)+(b*114))/1000;
-    
-    // Return black or white depending on luminance
-    return (yiq >= 128) ? '#000000' : '#ffffff';
-}
+        // Actualizar al cargar la página
+        updateDependsOnSelect();
+
+        // Actualizar cuando cambie el checkbox
+        isIndependentCheckbox.addEventListener('change', updateDependsOnSelect);
+
+        // Color picker functionality
+        const colorPicker = document.getElementById('color');
+        const colorHex = document.getElementById('colorHex');
+
+        colorPicker.addEventListener('input', function(e) {
+            colorHex.value = e.target.value;
+        });
+    });
 </script>
 {% endblock %}
