@@ -7,7 +7,12 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     dos2unix \
     curl \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
+
+# Create instance directory with correct permissions
+RUN mkdir -p /app/instance && \
+    chmod 777 /app/instance
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

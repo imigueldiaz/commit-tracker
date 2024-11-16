@@ -6,10 +6,12 @@ services:
     environment:
       - FLASK_APP=run.py
       - FLASK_ENV=development
+      - PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
       - .:/app
       - ./uploads:/app/uploads
-      - sqlite_data:/app/instance
+      - ./instance:/app/instance
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
