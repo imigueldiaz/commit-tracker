@@ -6,8 +6,8 @@
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h2">Commits</h1>
-        <a href="{{ url_for('main.new_commit') }}" class="btn btn-new-commit">
-            <i class="fas fa-plus"></i> New Commit
+        <a href="{{ url_for('main.new_commit') }}" class="btn btn-new-commit" data-bs-toggle="tooltip" title="New Commit">
+            <i class="fas fa-plus"></i>
         </a>
     </div>
 
@@ -29,14 +29,24 @@
                 <!-- Búsqueda general -->
                 <div class="col-md-4">
                     <label for="search" class="form-label">Search</label>
-                    <input type="text" class="form-control" id="search" name="search" 
-                           value="{{ search }}" placeholder="Commit number, JIRA ticket or message">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search" name="search" 
+                               value="{{ search }}" placeholder="Commit number, JIRA ticket or message">
+                        <button type="submit" class="btn btn-primary" data-bs-toggle="tooltip" title="Search">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        {% if search or branch_id %}
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary" data-bs-toggle="tooltip" title="Clear Filters">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
                 
                 <!-- Filtro por branch -->
                 <div class="col-md-3">
                     <label for="branch_id" class="form-label">Branch</label>
-                    <select class="form-select branch-select" id="branch_id" name="branch_id">
+                    <select class="form-select branch-select" id="branch_id" name="branch_id" onchange="this.form.submit()">
                         <option value="">All branches</option>
                         {% for branch in branches %}
                         <option value="{{ branch.id }}" 
@@ -51,23 +61,23 @@
                 <!-- Filtro por fecha -->
                 <div class="col-md-2">
                     <label for="date_from" class="form-label">Date From</label>
-                    <input type="date" class="form-control" id="date_from" name="date_from"
+                    <input type="date" class="flatpickr-input form-control" id="date_from" name="date_from"
                            value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
                 </div>
 
                 <div class="col-md-2">
                     <label for="date_to" class="form-label">Date To</label>
-                    <input type="date" class="form-control" id="date_to" name="date_to"
+                    <input type="date" class="flatpickr-input form-control" id="date_to" name="date_to"
                            value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
                 </div>
 
                 <!-- Botones -->
                 <div class="col-md-1 d-flex align-items-end">
                     <div class="btn-group w-100">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" data-bs-toggle="tooltip" title="Search">
                             <i class="fas fa-search"></i>
                         </button>
-                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary" data-bs-toggle="tooltip" title="Clear Filters">
                             <i class="fas fa-times"></i>
                         </a>
                     </div>
@@ -114,10 +124,14 @@
                     <td>{{ commit.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
                         <div class="btn-group">
-                            <a href="{{ url_for('main.view_commit', id=commit.id) }}" class="btn view-btn">View</a>
-                            <a href="{{ url_for('main.edit_commit', id=commit.id) }}" class="btn edit-btn">Edit</a>
-                            <button type="button" class="btn delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal{{ commit.id }}">
-                                Delete
+                            <a href="{{ url_for('main.view_commit', id=commit.id) }}" class="btn view-btn" data-bs-toggle="tooltip" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('main.edit_commit', id=commit.id) }}" class="btn edit-btn" data-bs-toggle="tooltip" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal{{ commit.id }}" data-bs-toggle="tooltip" title="Delete">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
 
@@ -137,7 +151,9 @@
                                     <div class="modal-footer border-secondary">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                         <form action="{{ url_for('main.delete_commit', id=commit.id) }}" method="POST" class="d-inline">
-                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                            <button type="submit" class="btn btn-danger" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </form>
                                     </div>
                                 </div>
@@ -153,6 +169,9 @@
 {% endblock %}
 
 {% block extra_css %}
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 <style>
     /* Column widths */
     .commit-number-col {
@@ -256,12 +275,64 @@
         background-color: var(--primary) !important;
         color: white !important;
     }
+
+    /* Estilos para el input de fecha */
+    .flatpickr-input {
+        background-color: var(--dark-input) !important;
+        border-color: var(--dark-border) !important;
+        color: var(--dark-text) !important;
+    }
+
+    .flatpickr-input:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 0.2rem rgba(var(--primary-rgb), 0.25) !important;
+    }
+
+    /* Personalización del calendario */
+    .flatpickr-calendar {
+        background: var(--dark-input) !important;
+        border-color: var(--dark-border) !important;
+        box-shadow: 0 3px 13px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .flatpickr-calendar.arrowTop:before,
+    .flatpickr-calendar.arrowTop:after {
+        border-bottom-color: var(--dark-border) !important;
+    }
+
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        background: var(--dark-input) !important;
+    }
+
+    .flatpickr-current-month input.cur-year {
+        background: transparent !important;
+    }
+
+    .flatpickr-day.selected {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+    }
+
+    .flatpickr-day:hover {
+        background: var(--dark-hover) !important;
+    }
 </style>
 {% endblock %}
 
 {% block scripts %}
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-$(document).ready(function() {
+    // Inicializar Flatpickr en los inputs de fecha
+    flatpickr("input[type=date]", {
+        dateFormat: "Y-m-d",
+        theme: "dark",
+        allowInput: true,
+        locale: {
+            firstDayOfWeek: 1
+        }
+    });
+
     // Inicializar Select2 para el filtro de branches
     $('.branch-select').select2({
         theme: 'bootstrap-5',
@@ -288,6 +359,5 @@ $(document).ready(function() {
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
         trigger: 'hover'
     }));
-});
 </script>
 {% endblock %}
